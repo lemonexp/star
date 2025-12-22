@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StarrySmog Pro | Advanced</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Fabric.js v5 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #09090b; color: #e4e4e7; }
+        .mono { font-family: 'JetBrains Mono', monospace; }
+        .glass { background: rgba(24, 24, 27, 0.95); border-right: 1px solid rgba(255,255,255,0.08); }
+        .slider-thumb::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 12px; height: 12px; background: #3b82f6; border-radius: 50%; cursor: pointer; border: 2px solid #18181b; }
+        #termOutput::-webkit-scrollbar { width: 4px; }
+        #termOutput::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 2px; }
+        .star-pattern { background-image: url('https://www.transparenttextures.com/patterns/stardust.png'); }
+        .section-title { font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #71717a; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem; }
+        .control-group { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); border-radius: 0.5rem; padding: 0.75rem; margin-bottom: 1rem; }
+    </style>
+</head>
+<body class="h-screen flex flex-col overflow-hidden">
+
+    <!-- Top Bar -->
+    <nav class="h-12 border-b border-zinc-800 flex items-center justify-between px-4 bg-zinc-950 shrink-0 z-20">
+        <div class="flex items-center gap-3">
+            <div class="w-6 h-6 rounded bg-blue-600 flex items-center justify-center text-white"><i class="ph-bold ph-shooting-star"></i></div>
+            <h1 class="font-bold tracking-tight text-sm text-white">STARRYSMOG <span class="text-zinc-500 font-normal">PRO</span></h1>
+        </div>
+        <div class="flex items-center gap-3">
+            <div id="connectionStatus" class="flex items-center gap-2 text-[10px] text-zinc-500">
+                <div class="w-1.5 h-1.5 rounded-full bg-zinc-700"></div> Offline
+            </div>
+            <div class="h-4 w-px bg-zinc-800"></div>
+            <button onclick="document.getElementById('helpModal').classList.remove('hidden')" class="text-zinc-400 hover:text-white text-xs transition-colors"><i class="ph-bold ph-question"></i></button>
+            <button onclick="resetApp()" class="text-zinc-400 hover:text-white text-xs transition-colors"><i class="ph-bold ph-arrow-counter-clockwise"></i></button>
+            <button onclick="document.getElementById('fileInput').click()" class="bg-zinc-100 hover:bg-white text-black px-3 py-1.5 rounded text-xs font-semibold transition-colors flex items-center gap-2">
+                <i class="ph-bold ph-upload-simple"></i> Open Image
+            </button>
+        </div>
+        <input type="file" id="fileInput" class="hidden" accept="image/*">
+    </nav>
+
+    <!-- Main Workspace -->
+    <div class="flex-1 flex overflow-hidden">
+        
+        <!-- Left Sidebar: Controls -->
+        <div class="w-72 glass flex flex-col h-full shrink-0 z-10">
+            <div class="flex-1 overflow-y-auto p-4 custom-scrollbar">
+                
+                <!-- 1. TUNE IMAGE -->
+                <div class="mb-6">
+                    <div class="section-title"><i class="ph-bold ph-sliders"></i> 1. Tune Image</div>
+                    <div class="control-group">
+                        <div class="mb-4">
+                            <div class="flex items-center justify-between mb-2">
+                                <label class="text-[10px] text-zinc-400 font-medium flex items-center gap-2">
+                                    <input type="checkbox" id="enableSmog" class="rounded bg-zinc-800 border-zinc-700 text-blue-600 focus:ring-0 w-3 h-3">
+                                    Smog Cutoff
+                                </label>
+                                <span id="blackPointVal" class="text-[10px] text-blue-400 mono">0</span>
+                            </div>
+                            <input type="range" id="blackPoint" min="0" max="100" value="0" class="w-full h-1 bg-zinc-700 rounded-lg appearance-none cursor-pointer">
+                        </div>
+                        <div>
+                            <div class="flex justify-between mb-2">
+                                <label class="text-[10px] text-zinc-400 font-medium">Enhanced Gain</label>
+                                <span id="brightnessVal" class="text-[10px] text-blue-400 mono">50%</span>
+                            </div>
+                            <input type="range" id="brightness" min="0" max="200" value="50" class="w-full h-1 bg-zinc-700 rounded-lg appearance-none cursor-pointer">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. DETECT STARS -->
+                <div class="mb-6">
+                    <div class="section-title"><i class="ph-bold ph-scan"></i> 2. Detect Stars</div>
+                    <div class="control-group">
+                        <div class="mb-4">
+                            <div class="flex justify-between mb-2">
+                                <label class="text-[10px] text-zinc-400 font-medium">Sensitivity</label>
+                                <span id="sensitivityVal" class="text-[10px] text-blue-400 mono">High</span>
+                            </div>
+                            <input type="range" id="sensitivity" min="1" max="40" step="1" value="10" class="w-full h-1 bg-zinc-700 rounded-lg appearance-none cursor-pointer">
+                        </div>
+                        <div class="mb-4">
+                            <div class="flex justify-between mb-2">
+                                <label class="text-[10px] text-zinc-400 font-medium">De-Clump</label>
+                                <span id="deblendVal" class="text-[10px] text-blue-400 mono">2.0</span>
+                            </div>
+                            <input type="range" id="deblend" min="0" max="5.0" step="0.1" value="2.0" class="w-full h-1 bg-zinc-700 rounded-lg appearance-none cursor-pointer">
+                        </div>
+                        <button id="scanBtn" class="w-full py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-900/20">
+                            <i class="ph-bold ph-aperture"></i> Run Scan
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 3. ENHANCE & EXPORT -->
+                <div>
+                    <div class="section-title"><i class="ph-bold ph-sparkle"></i> 3. Enhance & Export</div>
+                    <div class="control-group">
+                        <!-- Toggles -->
+                        <div class="space-y-2 mb-4">
+                            <label class="flex items-center justify-between cursor-pointer group">
+                                <span class="text-[10px] text-zinc-400 group-hover:text-zinc-300">Synthetic View</span>
+                                <input type="checkbox" id="syntheticMode" class="rounded bg-zinc-800 border-zinc-600 text-purple-500 focus:ring-0 w-3 h-3">
+                            </label>
+                            <label class="flex items-center justify-between cursor-pointer group">
+                                <span class="text-[10px] text-zinc-400 group-hover:text-zinc-300">Show Ranking (Top 10)</span>
+                                <input type="checkbox" id="showRank" class="rounded bg-zinc-800 border-zinc-600 text-yellow-500 focus:ring-0 w-3 h-3">
+                            </label>
+                            <label class="flex items-center justify-between cursor-pointer group">
+                                <span class="text-[10px] text-zinc-400 group-hover:text-zinc-300">Hide Blue Boxes</span>
+                                <input type="checkbox" id="hideMarkers" class="rounded bg-zinc-800 border-zinc-600 text-blue-500 focus:ring-0 w-3 h-3">
+                            </label>
+                            <div class="flex items-center justify-between pt-1">
+                                <span class="text-[10px] text-zinc-400">Max Stars</span>
+                                <div class="flex items-center gap-2">
+                                    <input type="checkbox" id="maxMode" class="rounded bg-zinc-800 border-zinc-600 text-red-500 focus:ring-0 w-3 h-3">
+                                    <input type="number" id="maxCount" value="50" min="1" max="1000" class="bg-zinc-800 border border-zinc-700 text-zinc-300 text-[10px] w-10 rounded px-1 text-center h-5">
+                                </div>
+                            </div>
+                        </div>
+
+                        <button id="enhanceBtn" disabled class="w-full py-2 mb-3 bg-zinc-800 text-zinc-500 text-xs font-medium rounded cursor-not-allowed transition-all border border-zinc-700">
+                            Apply Enhancement
+                        </button>
+
+                        <!-- Clean Export Menu -->
+                        <div class="space-y-1">
+                            <p class="text-[9px] text-zinc-500 font-mono mb-1 uppercase tracking-wide">Export Options</p>
+                            <button onclick="exportImage('overlay')" class="w-full flex items-center justify-between px-3 py-2 bg-zinc-800 hover:bg-zinc-700 rounded text-xs text-zinc-300 transition-colors border border-transparent hover:border-zinc-600">
+                                <span>Original + Stars</span>
+                                <i class="ph-bold ph-image text-blue-400"></i>
+                            </button>
+                            <button onclick="exportImage('synthetic')" class="w-full flex items-center justify-between px-3 py-2 bg-zinc-800 hover:bg-zinc-700 rounded text-xs text-zinc-300 transition-colors border border-transparent hover:border-zinc-600">
+                                <span>Black Background</span>
+                                <i class="ph-bold ph-moon text-purple-400"></i>
+                            </button>
+                            <button onclick="exportImage('transparent')" class="w-full flex items-center justify-between px-3 py-2 bg-zinc-800 hover:bg-zinc-700 rounded text-xs text-zinc-300 transition-colors border border-transparent hover:border-zinc-600">
+                                <span>Transparent PNG</span>
+                                <i class="ph-bold ph-checkerboard text-zinc-400"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Integrated Terminal -->
+            <div class="h-32 bg-black border-t border-zinc-800 flex flex-col shrink-0 font-mono">
+                <div class="px-3 py-1.5 border-b border-zinc-900 flex justify-between items-center bg-zinc-900/30">
+                    <span class="text-green-500 font-bold text-[9px] flex items-center gap-2">
+                        <i class="ph-bold ph-terminal-window"></i> SYSTEM LOG
+                    </span>
+                    <span id="termStatus" class="text-[9px] text-zinc-600 uppercase">Ready</span>
+                </div>
+                <div id="termOutput" class="flex-1 p-3 overflow-y-auto text-[10px] text-zinc-500 space-y-1">
+                    <div class="text-zinc-600">> System initialized.</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right: Canvas Area -->
+        <div id="canvasBg" class="flex-1 bg-black flex items-center justify-center relative star-pattern overflow-hidden">
+            <div id="canvasContainer" class="relative shadow-2xl shadow-blue-900/10">
+                <canvas id="c"></canvas>
+            </div>
+            <div id="emptyState" class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-zinc-600">
+                <div class="w-12 h-12 rounded bg-zinc-900 border border-zinc-800 flex items-center justify-center mb-3">
+                    <i class="ph-fill ph-upload-simple text-xl"></i>
+                </div>
+                <p class="text-xs font-medium">No image loaded</p>
+                <p class="text-[10px] opacity-60 mt-1">Supports high-res S25 RAW</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Instructions Modal -->
+    <div id="helpModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm hidden">
+        <div class="bg-zinc-900 border border-zinc-800 p-6 rounded-xl max-w-sm w-full relative shadow-2xl">
+            <button onclick="document.getElementById('helpModal').classList.add('hidden')" class="absolute top-3 right-3 text-zinc-500 hover:text-white transition-colors">
+                <i class="ph-bold ph-x"></i>
+            </button>
+            <h3 class="text-sm font-bold text-white mb-4 flex items-center gap-2">
+                <i class="ph-fill ph-info text-blue-500"></i> Quick Guide
+            </h3>
+            <div class="space-y-3 text-xs text-zinc-400">
+                <p><strong class="text-zinc-200">1. Detect:</strong> Use <span class="text-blue-400">Scan Image</span>. If stars are missed, slide <span class="text-blue-400">Sensitivity</span> left (towards 1).</p>
+                <p><strong class="text-zinc-200">2. Enhance:</strong> Click <span class="text-blue-400">Apply Enhancement</span>. Increase <span class="text-blue-400">Gain</span> to boost brightness.</p>
+                <p><strong class="text-zinc-200">3. Export:</strong> Use the export menu. "Original + Stars" overlays your new stars on the original photo.</p>
+            </div>
+            <div class="mt-5 pt-3 border-t border-zinc-800 text-center">
+                <button onclick="document.getElementById('helpModal').classList.add('hidden')" class="bg-zinc-800 hover:bg-zinc-700 text-zinc-200 px-4 py-1.5 rounded text-xs font-medium transition-colors">
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- CONFIG ---
+        const canvas = new fabric.Canvas('c', { selection: false, backgroundColor: '#000' });
+        let originalImage = null;
+        let solvedStars = []; 
+
+        // --- UI REFS ---
+        const ui = {
+            enableSmog: document.getElementById('enableSmog'),
+            blackPoint: document.getElementById('blackPoint'),
+            brightness: document.getElementById('brightness'),
+            sensitivity: document.getElementById('sensitivity'),
+            deblend: document.getElementById('deblend'),
+            hideMarkers: document.getElementById('hideMarkers'),
+            maxMode: document.getElementById('maxMode'),
+            maxCount: document.getElementById('maxCount'),
+            syntheticMode: document.getElementById('syntheticMode'),
+            showRank: document.getElementById('showRank'),
+            termOutput: document.getElementById('termOutput'),
+            termStatus: document.getElementById('termStatus'),
+            scanBtn: document.getElementById('scanBtn'),
+            enhanceBtn: document.getElementById('enhanceBtn'),
+            canvasBg: document.getElementById('canvasBg'),
+            
+            updateVal: (id, val) => document.getElementById(id).innerText = val,
+            log: (msg, color='text-zinc-400') => {
+                const d = document.createElement('div');
+                d.className = color;
+                d.innerHTML = `> ${msg}`;
+                ui.termOutput.appendChild(d);
+                ui.termOutput.scrollTop = ui.termOutput.scrollHeight;
+            },
+            clearLog: () => ui.termOutput.innerHTML = '',
+            setStatus: (msg) => ui.termStatus.innerText = msg
+        };
+
+        // --- LIVE FILTERS ---
+        function applyLiveFilters() {
+            if(!originalImage) return;
+
+            originalImage.filters = []; 
+
+            // 1. BACKGROUND VISIBILITY
+            if (ui.syntheticMode.checked) {
+                originalImage.visible = false;
+                canvas.backgroundColor = '#000000';
+            } else {
+                originalImage.visible = true;
+                canvas.backgroundColor = '#000000';
+                
+                // SMOG FILTER
+                if (ui.enableSmog.checked) {
+                    originalImage.filters.push(new fabric.Image.filters.Grayscale());
+                    const cutoff = parseInt(ui.blackPoint.value);
+                    const contrast = Math.max(-1, Math.min(1, cutoff / 100)); 
+                    const brightness = Math.max(-1, Math.min(1, -(cutoff / 140))); 
+
+                    if (cutoff > 0) {
+                        originalImage.filters.push(new fabric.Image.filters.Contrast({ contrast }));
+                        originalImage.filters.push(new fabric.Image.filters.Brightness({ brightness }));
+                    }
+                }
+            }
+            originalImage.applyFilters();
+            
+            // 2. ENHANCED STARS GAIN
+            const gainInput = parseInt(ui.brightness.value); 
+            // 0-200 slider mapped to opacity factor
+            const gainFactor = 0.2 + (gainInput / 50); 
+
+            canvas.getObjects().forEach(o => {
+                if(o.data && o.data.type === 'enhanced_star') {
+                    let newOpacity = (o.data.baseOpacity || 0.5) * gainFactor;
+                    if(newOpacity > 1) newOpacity = 1;
+                    o.set('opacity', newOpacity);
+                }
+                // Manage marker visibility
+                if(o.data && o.data.type === 'marker') {
+                    o.visible = !ui.hideMarkers.checked && !ui.syntheticMode.checked;
+                }
+                if(o.data && o.data.type === 'rank_text') {
+                    o.visible = ui.showRank.checked;
+                }
+            });
+
+            canvas.renderAll();
+        }
+
+        // --- LISTENERS ---
+        ui.blackPoint.addEventListener('input', (e) => { ui.updateVal('blackPointVal', e.target.value); applyLiveFilters(); });
+        ui.brightness.addEventListener('input', (e) => { ui.updateVal('brightnessVal', e.target.value + '%'); applyLiveFilters(); });
+        ui.enableSmog.addEventListener('change', applyLiveFilters);
+        ui.syntheticMode.addEventListener('change', applyLiveFilters);
+        ui.hideMarkers.addEventListener('change', applyLiveFilters);
+        ui.showRank.addEventListener('change', applyLiveFilters);
+        
+        ui.sensitivity.addEventListener('input', (e) => {
+            const val = parseFloat(e.target.value);
+            let label = val <= 5 ? "Ultra" : val <= 15 ? "High" : "Normal";
+            ui.updateVal('sensitivityVal', label);
+        });
+        ui.deblend.addEventListener('input', (e) => ui.updateVal('deblendVal', e.target.value));
+
+        // --- IMAGE LOAD ---
+        document.getElementById('fileInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if(!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(f) {
+                const imgObj = new Image();
+                imgObj.src = f.target.result;
+                imgObj.onload = function() {
+                    // Fit to screen
+                    const scale = Math.min((window.innerWidth - 300) / imgObj.width, (window.innerHeight - 50) / imgObj.height, 1);
+                    canvas.setWidth(imgObj.width * scale);
+                    canvas.setHeight(imgObj.height * scale);
+                    
+                    const fabricImg = new fabric.Image(imgObj, {
+                        selectable: false,
+                        scaleX: scale,
+                        scaleY: scale,
+                        objectCaching: false
+                    });
+
+                    canvas.clear();
+                    canvas.add(fabricImg);
+                    canvas.sendToBack(fabricImg);
+                    originalImage = fabricImg;
+                    
+                    document.getElementById('emptyState').classList.add('hidden');
+                    ui.canvasBg.classList.remove('star-pattern'); 
+                    solvedStars = [];
+                    
+                    ui.scanBtn.disabled = false;
+                    ui.scanBtn.innerHTML = '<i class="ph-bold ph-aperture"></i> Run Scan';
+                    ui.enhanceBtn.disabled = true;
+                    ui.enhanceBtn.innerText = "Enhance";
+                    ui.clearLog();
+                    ui.log("Image loaded. Ready.", "text-green-400");
+                    
+                    applyLiveFilters();
+                }
+            };
+            reader.readAsDataURL(file);
+        });
+
+        // --- ASYNC SCANNER ---
+        ui.scanBtn.addEventListener('click', () => {
+            if (!originalImage) return;
+            
+            ui.clearLog();
+            ui.log("Initializing scan...", "text-blue-400");
+            ui.scanBtn.disabled = true;
+            ui.scanBtn.innerHTML = '<i class="ph-bold ph-spinner animate-spin"></i> Scanning...';
+
+            setTimeout(() => {
+                try {
+                    const MAX_ANALYSIS = 2000;
+                    const el = originalImage.getElement();
+                    const natW = el.naturalWidth || el.width;
+                    const natH = el.naturalHeight || el.height;
+                    const analysisScale = Math.min(1, Math.min(MAX_ANALYSIS / natW, MAX_ANALYSIS / natH));
+                    
+                    const w = Math.floor(natW * analysisScale);
+                    const h = Math.floor(natH * analysisScale);
+                    
+                    ui.log(`Res: ${w}x${h}`, "text-zinc-500");
+
+                    const tempCanvas = document.createElement('canvas');
+                    tempCanvas.width = w; tempCanvas.height = h;
+                    const ctx = tempCanvas.getContext('2d');
+                    ctx.drawImage(el, 0, 0, w, h);
+                    
+                    const imgData = ctx.getImageData(0, 0, w, h);
+                    const data = imgData.data;
+                    const candidates = [];
+                    
+                    const threshold = parseInt(ui.sensitivity.value);
+                    const medianR = 1;
+                    
+                    // MODIFIED: Use Max(R,G,B) for brightness instead of Luminance
+                    // This fixes colored star detection
+                    const getL = (x, y) => {
+                        if(x<0||x>=w||y<0||y>=h) return 0;
+                        const i = (y*w+x)*4;
+                        // Use Math.max to detect ANY bright channel (Blue/Red stars)
+                        return Math.max(data[i], data[i+1], data[i+2]);
+                    };
+                    
+                    const getMedian = (cx, cy) => {
+                        const s = [];
+                        for(let dx=-medianR; dx<=medianR; dx++) {
+                            for(let dy=-medianR; dy<=medianR; dy++) {
+                                if(dx===0 && dy===0) continue;
+                                s.push(getL(cx+dx, cy+dy));
+                            }
+                        }
+                        s.sort((a,b)=>a-b);
+                        return s[4];
+                    };
+
+                    let y = 5;
+                    const chunkSize = 50;
+
+                    const processChunk = () => {
+                        const endY = Math.min(y + chunkSize, h - 5);
+                        for (; y < endY; y += 2) {
+                            for (let x = 5; x < w - 5; x += 2) {
+                                const luma = getL(x, y);
+                                if (luma < 5) continue;
+                                const bg = getMedian(x, y);
+                                // Check if pixel is brighter than background or near saturation
+                                if (luma > bg + threshold || luma > 250) {
+                                    if (luma >= getL(x, y-2) && luma >= getL(x, y+2) && 
+                                        luma >= getL(x-2, y) && luma >= getL(x+2, y)) {
+                                        candidates.push({ x, y, b: luma });
+                                    }
+                                }
+                            }
+                        }
+
+                        if (y < h - 5) {
+                            const pct = Math.round((y/h)*100);
+                            if(y%(chunkSize*5)===0) ui.setStatus(`Scanning... ${pct}%`);
+                            requestAnimationFrame(processChunk);
+                        } else {
+                            finishScan(candidates, analysisScale);
+                        }
+                    };
+                    processChunk();
+
+                } catch(e) {
+                    console.error(e);
+                    ui.log("Error: " + e.message, 'text-red-500');
+                    ui.scanBtn.disabled = false;
+                    ui.scanBtn.innerText = "Scan Failed";
+                }
+            }, 50);
+        });
+
+        function finishScan(candidates, analysisScale) {
+            ui.log(`Candidates: ${candidates.length}`, "text-zinc-500");
+            
+            candidates.sort((a,b) => b.b - a.b);
+            const maxB = candidates[0]?.b || 1;
+            const finalStars = [];
+            const deblendVal = parseFloat(ui.deblend.value);
+
+            for(const s of candidates) {
+                if(deblendVal === 0) {
+                    finalStars.push(s);
+                    continue;
+                }
+                const radius = 3 + ((s.b / maxB) * (deblendVal * 15));
+                let isolated = true;
+                for(const f of finalStars) {
+                    const d = Math.sqrt((s.x-f.x)**2 + (s.y-f.y)**2);
+                    if(d < radius) { isolated = false; break; }
+                }
+                if(isolated) finalStars.push(s);
+            }
+
+            solvedStars = finalStars.map(s => ({
+                canvasX: (s.x / analysisScale) * originalImage.scaleX,
+                canvasY: (s.y / analysisScale) * originalImage.scaleY,
+                brightness: s.b
+            }));
+
+            drawMarkers();
+            ui.log(`Stars found: ${solvedStars.length}`, 'text-green-400');
+            ui.setStatus("Idle");
+            ui.scanBtn.disabled = false;
+            ui.scanBtn.innerHTML = '<i class="ph-bold ph-aperture"></i> Scan Again';
+            ui.enhanceBtn.disabled = false;
+            ui.enhanceBtn.className = "w-full py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded transition-all";
+            ui.enhanceBtn.innerText = "Apply Enhancement";
+        }
+
+        function drawMarkers() {
+            const objs = canvas.getObjects();
+            for(let i=objs.length-1; i>=0; i--) {
+                if(objs[i].data?.type === 'marker' || objs[i].data?.type === 'enhanced_star' || objs[i].data?.type === 'rank_text') {
+                    canvas.remove(objs[i]);
+                }
+            }
+
+            solvedStars.forEach(s => {
+                const rect = new fabric.Rect({
+                    left: s.canvasX, top: s.canvasY, width: 14, height: 14,
+                    fill: 'transparent', stroke: 'rgba(59, 130, 246, 0.8)', strokeWidth: 1,
+                    originX: 'center', originY: 'center',
+                    selectable: false,
+                    visible: !ui.hideMarkers.checked && !ui.syntheticMode.checked,
+                    objectCaching: false,
+                    data: { type: 'marker' }
+                });
+                canvas.add(rect);
+            });
+        }
+
+        // --- ENHANCE ---
+        ui.enhanceBtn.addEventListener('click', () => {
+            const objs = canvas.getObjects();
+            for(let i=objs.length-1; i>=0; i--) {
+                if(objs[i].data?.type === 'enhanced_star' || objs[i].data?.type === 'rank_text') {
+                    canvas.remove(objs[i]);
+                }
+            }
+
+            const sorted = [...solvedStars].sort((a,b) => b.brightness - a.brightness);
+            const minB = sorted[sorted.length-1]?.brightness || 0;
+            const range = (sorted[0]?.brightness || 1) - minB;
+            const limit = parseInt(ui.maxCount.value) || 50;
+
+            sorted.forEach((s, i) => {
+                if(ui.maxMode.checked && i >= limit) return;
+
+                const norm = (s.brightness - minB) / (range || 1);
+                const size = 1.0 + (norm * 0.5);
+                const opacity = 0.05 + (0.95 * norm);
+
+                // Atmosphere
+                const atm = new fabric.Circle({
+                    radius: size * 6,
+                    fill: new fabric.Gradient({
+                        type: 'radial',
+                        coords: { x1: size*6, y1: size*6, r1: 0, r2: size*6 },
+                        colorStops: [
+                            { offset: 0, color: `rgba(200, 220, 255, ${opacity * 0.2})` },
+                            { offset: 1, color: 'rgba(0,0,0,0)' }
+                        ]
+                    }),
+                    left: s.canvasX, top: s.canvasY, originX: 'center', originY: 'center',
+                    selectable: false, objectCaching: false,
+                    data: { type: 'enhanced_star', baseOpacity: opacity }
+                });
+
+                // Core Glow
+                const glow = new fabric.Circle({
+                    radius: size * 3,
+                    fill: new fabric.Gradient({
+                        type: 'radial',
+                        coords: { x1: size*3, y1: size*3, r1: 0, r2: size*3 },
+                        colorStops: [
+                            { offset: 0, color: `rgba(230, 240, 255, ${opacity * 0.6})` },
+                            { offset: 1, color: 'rgba(0,0,0,0)' }
+                        ]
+                    }),
+                    left: s.canvasX, top: s.canvasY, originX: 'center', originY: 'center',
+                    selectable: false, objectCaching: false,
+                    data: { type: 'enhanced_star', baseOpacity: opacity }
+                });
+
+                // Solid Core
+                const core = new fabric.Circle({
+                    radius: size * 0.8,
+                    fill: `rgba(255, 255, 255, ${opacity})`,
+                    shadow: new fabric.Shadow({ color: '#fff', blur: size*2 }),
+                    left: s.canvasX, top: s.canvasY, originX: 'center', originY: 'center',
+                    selectable: false, objectCaching: false,
+                    data: { type: 'enhanced_star', baseOpacity: opacity }
+                });
+
+                canvas.add(atm);
+                canvas.add(glow);
+                canvas.add(core);
+
+                if(ui.showRank.checked && i < 10) {
+                    const txt = new fabric.Text(`#${i+1}`, {
+                        left: s.canvasX + 10, top: s.canvasY - 10,
+                        fontSize: 12, fill: '#fbbf24', stroke: 'black', strokeWidth: 1,
+                        selectable: false, fontFamily: 'Inter',
+                        objectCaching: false,
+                        data: { type: 'rank_text', isRankText: true }
+                    });
+                    canvas.add(txt);
+                }
+            });
+            applyLiveFilters();
+        });
+
+        // --- EXPORT LOGIC (FIXED) ---
+        window.exportImage = (mode) => {
+            if(!originalImage) return;
+            ui.log(`Exporting ${mode}...`, 'text-blue-400');
+
+            setTimeout(() => {
+                // Save state
+                const wasSmog = ui.enableSmog.checked;
+                const wasSynth = ui.syntheticMode.checked;
+                const wasMarkers = ui.hideMarkers.checked;
+                const bg = canvas.backgroundColor;
+
+                // PREPARE FOR RENDER
+                ui.hideMarkers.checked = true; // Always hide markers
+                
+                // IMPORTANT: Manually control visibility for export
+                if (mode === 'transparent') {
+                    originalImage.visible = false;
+                    canvas.backgroundColor = null;
+                } else if (mode === 'synthetic') {
+                    originalImage.visible = false;
+                    canvas.backgroundColor = '#000000';
+                } else {
+                    // OVERLAY MODE: Force image visible, temporarily disable synthetic checkbox
+                    // so applyLiveFilters doesn't hide it
+                    ui.syntheticMode.checked = false; 
+                    originalImage.visible = true;
+                }
+                
+                applyLiveFilters(); // Re-render scene
+
+                try {
+                    const multiplier = 1 / originalImage.scaleX; // Full resolution
+                    const dataURL = canvas.toDataURL({ 
+                        format: 'png', quality: 1.0, multiplier: multiplier, enableRetinaScaling: true 
+                    });
+                    
+                    const link = document.createElement('a');
+                    link.download = `StarrySmog_${mode}.png`;
+                    link.href = dataURL;
+                    link.click();
+                    ui.log("Download started.", 'text-green-400');
+                } catch(e) {
+                    console.error(e);
+                    ui.log("Export Error. Image too large?", 'text-red-500');
+                }
+
+                // RESTORE STATE
+                ui.hideMarkers.checked = wasMarkers;
+                ui.syntheticMode.checked = wasSynth;
+                canvas.backgroundColor = bg;
+                applyLiveFilters();
+
+            }, 200);
+        };
+
+        window.resetApp = function() {
+            if(confirm("Reset?")) location.reload();
+        }
+
+    </script>
+</body>
+</html>
