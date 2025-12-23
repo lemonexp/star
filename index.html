@@ -800,8 +800,8 @@
             ui.log(`Deblending removed ${candidates.length - finalStars.length} artifacts.`, "INFO");
 
             solvedStars = finalStars.map(s => ({
-                canvasX: originalImage.left - (originalImage.getScaledWidth() / 2) + (s.x / analysisScale) * originalImage.scaleX,
-                canvasY: originalImage.top - (originalImage.getScaledHeight() / 2) + (s.y / analysisScale) * originalImage.scaleY,
+                canvasX: originalImage.left + (s.x / analysisScale) * originalImage.scaleX,
+                canvasY: originalImage.top + (s.y / analysisScale) * originalImage.scaleY,
                 brightness: s.b
             }));
 
