@@ -41,7 +41,7 @@
         .resizer-v { width: 6px; cursor: col-resize; background: transparent; transition: background 0.2s; z-index: 50; flex-shrink: 0; }
         .resizer-v:hover, .resizer-v.dragging { background: #3b82f6; }
         
-        .resizer-h { height: 6px; cursor: row-resize; background: transparent; transition: background 0.2s; z-index: 50; flex-shrink: 0; }
+        .resizer-h { height: 6px; width: 100%; cursor: row-resize; background: transparent; transition: background 0.2s; z-index: 50; flex-shrink: 0; }
         .resizer-h:hover, .resizer-h.dragging { background: #3b82f6; }
 
         .resizer-term { height: 4px; cursor: row-resize; background: #27272a; transition: background 0.2s; flex-shrink: 0; }
@@ -329,7 +329,6 @@
             sensitivity: document.getElementById('sensitivity'),
             scanRadius: document.getElementById('scanRadius'),
             deblend: document.getElementById('deblend'),
-            
             starSize: document.getElementById('starSize'),
             glowIntensity: document.getElementById('glowIntensity'),
 
@@ -378,7 +377,7 @@
             const r2 = ui.resizerSecondary;
             const content = ui.canvasBg;
 
-            // Reset Classes and Constraints
+            // Reset Classes and Styles
             main.className = "flex-1 flex overflow-hidden"; 
             s1.className = "glass flex flex-col shrink-0 z-20 overflow-hidden"; 
             s2.className = "glass flex flex-col shrink-0 z-20 overflow-hidden hidden"; 
@@ -386,48 +385,61 @@
             r2.className = "hidden";
             content.className = "flex-1 bg-black flex items-center justify-center relative star-pattern overflow-hidden z-0";
             
-            // Remove max-width for bottom/top layouts
-            s1.style.maxWidth = (mode === 'bottom' || mode === 'top') ? '100%' : '50%';
-            s1.style.width = (mode === 'bottom' || mode === 'top') ? '100%' : '320px';
-            s1.style.height = (mode === 'bottom' || mode === 'top') ? '250px' : '100%';
-
+            // Clean inline styles
+            s1.style.width = ''; s1.style.height = ''; s1.style.maxWidth = '';
+            
             if (mode === 'split') {
                 main.classList.add('flex-row');
-                s1.classList.add('border-r-glass', 'order-1');
+                s1.classList.add('w-80', 'border-r-glass', 'order-1');
                 content.classList.add('order-2');
                 s2.classList.remove('hidden');
-                s2.classList.add('border-l-glass', 'order-3');
-                r1.className = "resizer-v order-1";
-                r2.className = "resizer-v order-3"; 
+                s2.classList.add('w-80', 'border-l-glass', 'order-3');
+                
+                r1.className = "resizer-v order-2"; // Resizer between s1 and content? No, after s1.
+                // Wait, order-1 is s1. order-2 is content. Resizer should be order-1.5 ideally.
+                // Flex order: S1(1) R1(2) Content(3) R2(4) S2(5)
+                s1.style.order = 1;
+                r1.className = "resizer-v"; r1.style.order = 2;
+                content.style.order = 3;
+                r2.className = "resizer-v"; r2.style.order = 4;
+                s2.style.order = 5;
+
                 if(ui.groupOutputs.parentElement !== ui.containerB) ui.containerB.appendChild(ui.groupOutputs);
             } 
             else if (mode === 'bottom') {
                 main.classList.add('flex-col');
-                content.classList.add('order-1');
-                // Order: Content -> Resizer -> Sidebar
-                r1.className = "resizer-h order-2";
-                s1.classList.add('border-t', 'border-glass', 'order-3');
+                // Top: Content(1), Resizer(2), Sidebar(3)
+                content.style.order = 1;
+                r1.className = "resizer-h"; r1.style.order = 2;
+                s1.classList.add('border-t', 'border-glass'); s1.style.order = 3;
+                s1.style.width = '100%'; 
+                s1.style.height = '250px'; // Default height
+                
                 if(ui.groupOutputs.parentElement !== ui.singleModePlaceholder) ui.singleModePlaceholder.appendChild(ui.groupOutputs);
             }
             else if (mode === 'top') {
                  main.classList.add('flex-col');
-                 s1.classList.add('border-b', 'border-glass', 'order-1');
-                 r1.className = "resizer-h order-2";
-                 content.classList.add('order-3');
+                 // Top: Sidebar(1), Resizer(2), Content(3)
+                 s1.classList.add('border-b', 'border-glass'); s1.style.order = 1;
+                 r1.className = "resizer-h"; r1.style.order = 2;
+                 content.style.order = 3;
+                 s1.style.width = '100%'; 
+                 s1.style.height = '250px';
+
                  if(ui.groupOutputs.parentElement !== ui.singleModePlaceholder) ui.singleModePlaceholder.appendChild(ui.groupOutputs);
             }
             else if (mode === 'right') {
                 main.classList.add('flex-row');
-                content.classList.add('order-1');
-                r1.className = "resizer-v order-2";
-                s1.classList.add('border-l-glass', 'order-3');
+                content.style.order = 1;
+                r1.className = "resizer-v"; r1.style.order = 2;
+                s1.classList.add('w-80', 'border-l-glass'); s1.style.order = 3;
                 if(ui.groupOutputs.parentElement !== ui.singleModePlaceholder) ui.singleModePlaceholder.appendChild(ui.groupOutputs);
             }
             else { // Default 'left'
                 main.classList.add('flex-row');
-                s1.classList.add('border-r-glass', 'order-1');
-                r1.className = "resizer-v order-2";
-                content.classList.add('order-3');
+                s1.classList.add('w-80', 'border-r-glass'); s1.style.order = 1;
+                r1.className = "resizer-v"; r1.style.order = 2;
+                content.style.order = 3;
                 if(ui.groupOutputs.parentElement !== ui.singleModePlaceholder) ui.singleModePlaceholder.appendChild(ui.groupOutputs);
             }
 
@@ -464,8 +476,10 @@
             let startPos, startSize;
 
             const onMouseDown = (e) => {
+                // Direction Logic
                 let isVertical = type === 'vertical';
                 if(type === 'dynamic') {
+                    // Vertical if side modes, Horizontal if top/bottom
                     isVertical = (layoutMode === 'left' || layoutMode === 'right' || layoutMode === 'split');
                 }
                 
@@ -477,8 +491,9 @@
                     const currentPos = isVertical ? ev.clientX : ev.clientY;
                     let delta = currentPos - startPos;
                     
-                    if (layoutMode === 'right' && isVertical) delta = -delta;
-                    if (layoutMode === 'bottom' && !isVertical) delta = -delta; 
+                    // Invert delta logic based on position
+                    if (layoutMode === 'right' && isVertical) delta = -delta; // Dragging left increases width
+                    if (layoutMode === 'bottom' && !isVertical) delta = -delta; // Dragging up increases height
                     
                     const newSize = Math.max(100, startSize + delta);
                     
@@ -661,6 +676,8 @@
                     ui.enhanceBtn.innerText = "Enhance";
                     ui.log("Canvas ready. Waiting for user action.", "SUCCESS");
                     
+                    // Force layout refresh so section 3 is visible
+                    setLayout(layoutMode); 
                     applyLiveFilters();
                 }
             };
