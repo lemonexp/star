@@ -329,6 +329,7 @@
             sensitivity: document.getElementById('sensitivity'),
             scanRadius: document.getElementById('scanRadius'),
             deblend: document.getElementById('deblend'),
+            
             starSize: document.getElementById('starSize'),
             glowIntensity: document.getElementById('glowIntensity'),
 
@@ -447,7 +448,6 @@
                 if(originalImage) {
                    const scale = Math.min((ui.canvasBg.clientWidth - 50) / originalImage.width, (ui.canvasBg.clientHeight - 50) / originalImage.height, 1);
                    canvas.setDimensions({width: ui.canvasBg.clientWidth, height: ui.canvasBg.clientHeight});
-                   // Centering handled by fabric usually, but we might need to recenter object
                    const img = canvas.item(0);
                    if(img) {
                        img.scale(scale);
@@ -464,7 +464,6 @@
             let startPos, startSize;
 
             const onMouseDown = (e) => {
-                // Determine direction based on layout mode if generic resizer
                 let isVertical = type === 'vertical';
                 if(type === 'dynamic') {
                     isVertical = (layoutMode === 'left' || layoutMode === 'right' || layoutMode === 'split');
@@ -478,10 +477,8 @@
                     const currentPos = isVertical ? ev.clientX : ev.clientY;
                     let delta = currentPos - startPos;
                     
-                    // Invert delta for right/bottom docking if needed? 
-                    // Right dock: dragging left (negative delta) should increase width.
                     if (layoutMode === 'right' && isVertical) delta = -delta;
-                    if (layoutMode === 'bottom' && !isVertical) delta = -delta; // Drag up increases height
+                    if (layoutMode === 'bottom' && !isVertical) delta = -delta; 
                     
                     const newSize = Math.max(100, startSize + delta);
                     
@@ -505,18 +502,16 @@
             resizer.addEventListener('mousedown', onMouseDown);
         };
 
-        // Init Main Resizers
         initResizer(ui.resizerPrimary, ui.sidebarPrimary, 'dynamic');
-        initResizer(ui.resizerSecondary, ui.sidebarSecondary, 'vertical'); // Secondary only exists in split (vertical)
+        initResizer(ui.resizerSecondary, ui.sidebarSecondary, 'vertical'); 
         
-        // Init Terminal Resizer (Height Only)
         let termStartY, termStartH;
         ui.termResizer.addEventListener('mousedown', (e) => {
             termStartY = e.clientY;
             termStartH = ui.terminalContainer.getBoundingClientRect().height;
             
             const onMove = (ev) => {
-                const delta = termStartY - ev.clientY; // Drag up increases height
+                const delta = termStartY - ev.clientY; 
                 ui.terminalContainer.style.height = `${Math.max(50, termStartH + delta)}px`;
             };
             const onUp = () => {
@@ -646,6 +641,8 @@
                         selectable: false,
                         scaleX: scale,
                         scaleY: scale,
+                        left: (canvas.width - imgObj.width * scale) / 2,
+                        top: (canvas.height - imgObj.height * scale) / 2,
                         objectCaching: false
                     });
 
@@ -653,7 +650,6 @@
                     canvas.add(fabricImg);
                     canvas.sendToBack(fabricImg);
                     originalImage = fabricImg;
-                    fabricImg.center();
                     
                     document.getElementById('emptyState').classList.add('hidden');
                     ui.canvasBg.classList.remove('star-pattern'); 
@@ -857,6 +853,7 @@
             const range = (sorted[0]?.brightness || 1) - minB;
             const limit = parseInt(ui.maxCount.value) || 50;
             
+            // Get Enhancement Settings
             const sizeScale = parseFloat(ui.starSize.value); 
             const glowStrength = parseInt(ui.glowIntensity.value) / 100;
 
@@ -866,11 +863,13 @@
                 count++;
 
                 const norm = (s.brightness - minB) / (range || 1);
+                // Base size logic scaled by slider
                 const baseSize = 1.0 + (norm * 0.5); 
                 const size = baseSize * sizeScale;
                 
                 const opacity = 0.05 + (0.95 * norm);
 
+                // Atmosphere (Outer Glow)
                 const atm = new fabric.Circle({
                     radius: size * 6,
                     fill: new fabric.Gradient({
@@ -886,6 +885,7 @@
                     data: { type: 'enhanced_star', baseOpacity: opacity }
                 });
 
+                // Core Glow (Inner Halo)
                 const glow = new fabric.Circle({
                     radius: size * 3,
                     fill: new fabric.Gradient({
@@ -901,6 +901,7 @@
                     data: { type: 'enhanced_star', baseOpacity: opacity }
                 });
 
+                // Solid Core
                 const core = new fabric.Circle({
                     radius: size * 0.8,
                     fill: `rgba(255, 255, 255, ${opacity})`,
@@ -979,6 +980,9 @@
 
             }, 200);
         };
+        
+        // Init
+        setLayout('left');
 
         window.resetApp = function() {
             if(confirm("Reset?")) location.reload();
